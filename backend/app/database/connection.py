@@ -1,31 +1,33 @@
-# app/core/connection.py
+import os
+from pathlib import Path
 
+from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from app.database.base import Base
+load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 
-##We will use later .env
-DATABASE_URL = (
-    "postgresql+psycopg://postgres:password@localhost/adsecure"
-)
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+if not DATABASE_URL:
+    raise RuntimeError("DATABASE_URL is not configured")
 
 engine = create_engine(
     DATABASE_URL,
-    echo=True
+    echo=True,
 )
 
 SessionLocal = sessionmaker(
     bind=engine,
     autoflush=False,
-    autocommit=False
+    autocommit=False,
 )
+
 
 def get_db():
     db = SessionLocal()
 
     try:
         yield db
-
     finally:
         db.close()

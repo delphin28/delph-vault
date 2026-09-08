@@ -1,6 +1,6 @@
 # Model: user.py
 from sqlalchemy import String
-from sqlalchemy.orm import Mapped, mapped_column,relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database.base import Base
 
 class Users(Base):
@@ -10,12 +10,13 @@ class Users(Base):
     email : Mapped[str] = mapped_column(String(30), unique= True,nullable=False)
     master_password_hash: Mapped[str] = mapped_column(String(60), nullable=False)
     
-    passwords = relationship("Passwords",
-                back_populates="user",
-                cascade="all,delete-orphan"
-                )
+    passwords = relationship(
+        "Passwords",
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
     categories = relationship(
-        "Categories",
+        "Category",
         back_populates="user",
         cascade="all, delete-orphan"
     )

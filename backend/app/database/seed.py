@@ -1,10 +1,8 @@
-# scripts/seed.py
-
 from sqlalchemy.orm import Session
 
-from app.core.connection import SessionLocal
-
+from app.database.connection import SessionLocal
 from app.models.users import Users
+
 
 def seed_users(db: Session):
 

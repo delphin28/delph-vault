@@ -1,25 +1,29 @@
-import logo from './logo.svg';
+import { useEffect, useState } from 'react';
+import AppRoutes from './routes/AppRoutes';
 import './App.css';
 
 function App() {
+  const [backendStatus, setBackendStatus] = useState('Checking...');
+
+  useEffect(() => {
+    const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+
+    fetch(`${apiUrl}/health`)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error('Backend request failed');
+        }
+
+        return response.json();
+      })
+      .then((data) => setBackendStatus(data.status === 'UP' ? 'Connected' : 'Unavailable'))
+      .catch(() => setBackendStatus('Unavailable'));
+  }, []);
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <AppRoutes backendStatus={backendStatus} />
   );
+  
+  
 }
 
 export default App;

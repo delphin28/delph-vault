@@ -44,7 +44,6 @@ class Passwords(Base):
     )
 
     category = relationship(
-        "Categories",
-        back_populates="passwords",
-        cascade="all, delete-orphan"
+        "Category",
+        back_populates="passwords"
     )
