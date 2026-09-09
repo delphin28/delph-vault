@@ -13,7 +13,9 @@ from app.database.connection import get_db
 from app.repositories.users_repository import get_user_by_email
 from app.dependencies import (
     ACCESS_TOKEN_COOKIE,
+    CSRF_COOKIE,
     get_current_user,
+    issue_csrf_token,
     mark_recent_verification,
     require_recent_verification,
 )
@@ -29,6 +31,7 @@ JWT_ALGORITHM = os.getenv("JWT_ALGORITHM")
 JWT_ACCESS_TOKEN_EXPIRE_MINUTES = int(
     os.getenv("JWT_ACCESS_TOKEN_EXPIRE_MINUTES")
 )
+COOKIE_SAMESITE = os.getenv("COOKIE_SAMESITE", "strict")
 
 if not JWT_SECRET_KEY:
     raise RuntimeError("JWT_SECRET_KEY is not configured")
@@ -37,6 +40,22 @@ router = APIRouter(
     prefix="/auth",
     tags=["Authentication"],
 )
+
+
+@router.get("/csrf")
+def csrf_token(request: Request, response: Response):
+    token = request.cookies.get(CSRF_COOKIE) or issue_csrf_token()
+    if not request.cookies.get(CSRF_COOKIE):
+        response.set_cookie(
+            CSRF_COOKIE,
+            token,
+            httponly=False,
+            secure=True,
+            samesite=COOKIE_SAMESITE,
+            max_age=3600,
+            path="/",
+        )
+    return {"csrf_token": token}
 
 
 @router.post("/login")
@@ -97,7 +116,7 @@ def login(
         value=token,
         httponly=True,
         secure=True,
-        samesite="strict",
+        samesite=COOKIE_SAMESITE,
         max_age=JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         path="/",
     )

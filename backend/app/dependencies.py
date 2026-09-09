@@ -44,7 +44,7 @@ def mark_recent_verification(response) -> None:
         f"{timestamp}.{signature}",
         httponly=True,
         secure=True,
-        samesite="strict",
+        samesite=os.getenv("COOKIE_SAMESITE", "strict"),
         max_age=600,
         path="/",
     )

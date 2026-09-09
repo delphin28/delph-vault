@@ -5,10 +5,21 @@ const apiClient = axios.create({
   withCredentials: true,
 });
 
-apiClient.interceptors.request.use((config) => {
-  const csrfMatch = document.cookie.match(/(?:^|; )csrf_token=([^;]*)/);
-  if (csrfMatch) {
-    config.headers['X-CSRF-Token'] = decodeURIComponent(csrfMatch[1]);
+let csrfToken = null;
+
+async function ensureCsrfToken() {
+  if (csrfToken) return csrfToken;
+
+  const response = await axios.get(`${process.env.REACT_APP_API_URL || '/api'}/auth/csrf`, {
+    withCredentials: true,
+  });
+  csrfToken = response.data.csrf_token;
+  return csrfToken;
+}
+
+apiClient.interceptors.request.use(async (config) => {
+  if (!['get', 'head', 'options'].includes(config.method?.toLowerCase())) {
+    config.headers['X-CSRF-Token'] = await ensureCsrfToken();
   }
 
   return config;

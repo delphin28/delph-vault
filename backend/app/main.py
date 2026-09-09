@@ -1,4 +1,5 @@
 from hmac import compare_digest
+import os
 
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -41,16 +42,23 @@ async def csrf_protection(request, call_next):
 
     response = await call_next(request)
     if not request.cookies.get(CSRF_COOKIE):
-        response.set_cookie(CSRF_COOKIE, issue_csrf_token(), httponly=False, secure=True, samesite="strict", max_age=3600, path="/")
+        response.set_cookie(
+            CSRF_COOKIE,
+            issue_csrf_token(),
+            httponly=False,
+            secure=True,
+            samesite=os.getenv("COOKIE_SAMESITE", "strict"),
+            max_age=3600,
+            path="/",
+        )
     return response
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "https://localhost:8443",
-    ],
+    allow_origins=[origin.strip() for origin in os.getenv(
+        "CORS_ORIGINS",
+        "http://localhost:3000,http://127.0.0.1:3000,https://localhost:8443",
+    ).split(",") if origin.strip()],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
