@@ -8,6 +8,16 @@ def init_db() -> None:
     Base.metadata.create_all(bind=engine)
 
     if engine.dialect.name == "postgresql":
+        columns = {column["name"] for column in inspect(engine).get_columns("users")}
+        with engine.begin() as connection:
+            if "totp_secret" not in columns:
+                connection.execute(text('ALTER TABLE users ADD COLUMN totp_secret VARCHAR(512)'))
+            if "totp_enabled" not in columns:
+                connection.execute(text('ALTER TABLE users ADD COLUMN totp_enabled BOOLEAN NOT NULL DEFAULT FALSE'))
+            if "backup_codes" not in columns:
+                connection.execute(text('ALTER TABLE users ADD COLUMN backup_codes VARCHAR(4096)'))
+
+    if engine.dialect.name == "postgresql":
         password_column = next(
             column
             for column in inspect(engine).get_columns("passwords")

@@ -30,7 +30,7 @@ import {
   VisibilityOutlined,
 } from '@mui/icons-material';
 import { getCategories } from '../../../api/categoryApi';
-import { createPassword, deletePassword, getPasswords } from '../../../api/vaultApi';
+import { createPassword, deletePassword, getPasswords, revealPassword } from '../../../api/vaultApi';
 
 const emptyForm = { name: '', url: '', password: '', category_id: '' };
 const passwordCharacters = {
@@ -98,6 +98,8 @@ function PasswordListPage() {
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [revealedId, setRevealedId] = useState(null);
+  const [revealedPasswords, setRevealedPasswords] = useState({});
+  const [revealingId, setRevealingId] = useState(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [generatorLength, setGeneratorLength] = useState(20);
@@ -136,7 +138,14 @@ function PasswordListPage() {
   useEffect(() => {
     if (revealedId === null) return undefined;
 
-    const timeout = window.setTimeout(() => setRevealedId(null), 10000);
+    const timeout = window.setTimeout(() => {
+      setRevealedId(null);
+      setRevealedPasswords((current) => {
+        const next = { ...current };
+        delete next[revealedId];
+        return next;
+      });
+    }, 10000);
     return () => window.clearTimeout(timeout);
   }, [revealedId]);
 
@@ -163,6 +172,30 @@ function PasswordListPage() {
       if (current[option] && enabledOptions === 1) return current;
       return { ...current, [option]: !current[option] };
     });
+  }
+
+  async function handleReveal(id) {
+    if (revealedId === id) {
+      setRevealedId(null);
+      setRevealedPasswords((current) => {
+        const next = { ...current };
+        delete next[id];
+        return next;
+      });
+      return;
+    }
+
+    setRevealingId(id);
+    setError('');
+    try {
+      const secret = await revealPassword(id);
+      setRevealedPasswords((current) => ({ ...current, [id]: secret }));
+      setRevealedId(id);
+    } catch {
+      setError('Unable to reveal this password.');
+    } finally {
+      setRevealingId(null);
+    }
   }
 
   async function handleCreate(event) {
@@ -240,12 +273,12 @@ function PasswordListPage() {
                     <Typography className="vault-entry__url" variant="body2">{entry.url || 'No URL saved'}</Typography>
                   </Box>
                   <Typography className="vault-entry__secret" component="span" onContextMenu={(event) => event.preventDefault()}>
-                    {isRevealed ? entry.password : '••••••••••••'}
+                    {isRevealed ? revealedPasswords[entry.id] : '••••••••••••'}
                   </Typography>
                   <Typography className="vault-entry__category" variant="caption">{category?.name || 'Uncategorized'}</Typography>
                   {entry.url && <Tooltip title="Open saved URL"><IconButton component="a" href={entry.url} target="_blank" rel="noreferrer" aria-label={`Open ${entry.name}`}><LanguageOutlined /></IconButton></Tooltip>}
                   <Tooltip title={isRevealed ? 'Hide password' : 'Reveal for 10 seconds'}>
-                    <IconButton onClick={() => setRevealedId(isRevealed ? null : entry.id)} aria-label={isRevealed ? 'Hide password' : 'Reveal password'}>{isRevealed ? <VisibilityOffOutlined /> : <VisibilityOutlined />}</IconButton>
+                    <IconButton onClick={() => handleReveal(entry.id)} disabled={revealingId === entry.id} aria-label={isRevealed ? 'Hide password' : 'Reveal password'}>{isRevealed ? <VisibilityOffOutlined /> : <VisibilityOutlined />}</IconButton>
                   </Tooltip>
                   <Tooltip title="Delete entry"><IconButton color="error" onClick={() => handleDelete(entry.id)} aria-label={`Delete ${entry.name}`}><DeleteOutlineOutlined /></IconButton></Tooltip>
                 </CardContent>

@@ -39,7 +39,7 @@ function AuthPage({ initialMode = 'LOGIN' }) {
         await register(formData.get('username'), formData.get('email'), formData.get('password'));
         navigate('/', { replace: true, state: { registered: true } });
       } else {
-        await login(formData.get('email'), formData.get('password'));
+        await login(formData.get('email'), formData.get('password'), formData.get('otp'), formData.get('backup-code'));
         navigate('/dashboard');
       }
     } catch (apiError) {
@@ -88,6 +88,15 @@ function AuthPage({ initialMode = 'LOGIN' }) {
             Master password <span aria-hidden="true">*</span>
           </label>
           <input type="password" id="password" name="password" autoComplete={isRegistering ? 'new-password' : 'current-password'} required />
+
+          {!isRegistering && (
+            <>
+              <label htmlFor="otp">Authenticator code <span aria-hidden="true">(if enabled)</span></label>
+              <input type="text" id="otp" name="otp" inputMode="numeric" pattern="[0-9]{6}" maxLength="6" autoComplete="one-time-code" />
+              <label htmlFor="backup-code">Backup code <span aria-hidden="true">(alternative)</span></label>
+              <input type="text" id="backup-code" name="backup-code" autoComplete="off" />
+            </>
+          )}
 
           {isRegistering && (
             <>

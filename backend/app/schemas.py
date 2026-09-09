@@ -31,5 +31,8 @@ class PasswordResponse(BaseModel):
     id: int
     name: str
     url: Optional[str]
-    password: str
     category_id: int
+
+
+class PasswordRevealResponse(BaseModel):
+    password: str

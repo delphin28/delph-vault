@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, Form, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.database.connection import get_db
@@ -11,7 +11,8 @@ from app.repositories.passwords_repository import (
     get_password,
     list_passwords,
 )
-from app.schemas import PasswordCreate, PasswordResponse, PasswordUpdate
+from app.schemas import PasswordCreate, PasswordResponse, PasswordRevealResponse, PasswordUpdate
+from app.services.export_crypto import encrypt_export
 from app.services.vault_crypto import decrypt_secret, encrypt_secret
 from app.utils.security import hash_password
 
@@ -23,19 +24,10 @@ router = APIRouter(
 
 
 def to_response(password) -> PasswordResponse:
-    try:
-        decrypted_password = decrypt_secret(password.Password)
-    except ValueError as error:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Stored vault secret cannot be decrypted",
-        ) from error
-
     return PasswordResponse(
         id=password.id,
         name=password.name,
         url=password.url,
-        password=decrypted_password,
         category_id=password.category_id,
     )
 
@@ -48,11 +40,15 @@ def get_passwords(
     return [to_response(item) for item in list_passwords(db, current_user.id)]
 
 
-@router.get("/export")
+@router.post("/export")
 def export_passwords(
+    password: str = Form(...),
     db: Session = Depends(get_db),
     current_user: Users = Depends(get_current_user),
 ):
+    if not password_hash.verify(password, current_user.master_password_hash):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid master password")
+
     exported_entries = []
 
     for entry in list_passwords(db, current_user.id):
@@ -69,20 +65,18 @@ def export_passwords(
                 "name": entry.name,
                 "url": entry.url,
                 "category": entry.category.name if entry.category else None,
-                "password_hash": hash_password(plaintext),
+                "password": plaintext,
             }
         )
 
-    return {
-        "format": "delph-vault-password-hashes",
-        "version": 1,
+    return encrypt_export({
         "user": {
             "id": current_user.id,
             "username": current_user.username,
             "email": current_user.email,
         },
         "entries": exported_entries,
-    }
+    }, password)
 
 
 @router.post("", response_model=PasswordResponse, status_code=status.HTTP_201_CREATED)
@@ -104,6 +98,25 @@ def add_password(
         category_id=entry.category_id,
     )
     return to_response(password)
+
+
+@router.get("/{password_id}/reveal", response_model=PasswordRevealResponse)
+def reveal_password(
+    password_id: int,
+    db: Session = Depends(get_db),
+    current_user: Users = Depends(get_current_user),
+):
+    password = get_password(db, password_id, current_user.id)
+    if not password:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Password not found")
+
+    try:
+        return {"password": decrypt_secret(password.Password)}
+    except ValueError as error:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Stored vault secret cannot be decrypted",
+        ) from error
 
 
 @router.get("/{password_id}", response_model=PasswordResponse)

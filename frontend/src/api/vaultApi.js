@@ -14,7 +14,14 @@ export async function deletePassword(passwordId) {
 	await apiClient.delete(`/passwords/${passwordId}`);
 }
 
-export async function exportPasswords() {
-	const response = await apiClient.get('/passwords/export');
+export async function revealPassword(passwordId) {
+	const response = await apiClient.get(`/passwords/${passwordId}/reveal`);
+	return response.data.password;
+}
+
+export async function exportPasswords(password) {
+	const response = await apiClient.post('/passwords/export', new URLSearchParams({ password }), {
+		headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+	});
 	return response.data;
 }

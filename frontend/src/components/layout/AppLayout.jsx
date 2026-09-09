@@ -1,9 +1,14 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import {
   AppBar,
   Box,
+  Button,
   CssBaseline,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Divider,
   Drawer,
   IconButton,
@@ -23,6 +28,7 @@ import {
   SettingsOutlined,
 } from '@mui/icons-material';
 import { logout } from '../../api/authApi';
+import { getCurrentUser } from '../../api/authApi';
 
 const drawerWidth = 248;
 
@@ -36,11 +42,41 @@ const navigation = [
 
 function AppLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [mfaPromptOpen, setMfaPromptOpen] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    let active = true;
+
+    getCurrentUser().then((user) => {
+      const dismissedKey = `mfa_prompt_dismissed_${user.id}`;
+      if (active && !user.mfa_enabled && !sessionStorage.getItem(dismissedKey)) {
+        setMfaPromptOpen(true);
+      }
+    }).catch(() => {
+      // ProtectedRoute handles session failures; the prompt can stay hidden here.
+    });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   async function handleLogout() {
     await logout();
     navigate('/');
+  }
+
+  function skipMfaPrompt() {
+    getCurrentUser().then((user) => {
+      sessionStorage.setItem(`mfa_prompt_dismissed_${user.id}`, 'true');
+    }).catch(() => {});
+    setMfaPromptOpen(false);
+  }
+
+  function configureMfa() {
+    setMfaPromptOpen(false);
+    navigate('/settings');
   }
 
   const drawer = (
@@ -139,6 +175,19 @@ function AppLayout() {
       <Box component="main" sx={{ flexGrow: 1, p: { xs: 2, sm: 4 }, pt: { xs: 10, sm: 12 } }}>
         <Outlet />
       </Box>
+
+      <Dialog open={mfaPromptOpen} onClose={skipMfaPrompt} maxWidth="xs" fullWidth>
+        <DialogTitle>Protect your vault</DialogTitle>
+        <DialogContent>
+          <Typography color="text.secondary">
+            Add Microsoft Authenticator to strengthen your Delph Vault login with a six-digit security code.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={skipMfaPrompt}>Skip for now</Button>
+          <Button variant="contained" onClick={configureMfa}>Set up MFA</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

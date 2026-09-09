@@ -5,6 +5,15 @@ const apiClient = axios.create({
   withCredentials: true,
 });
 
+apiClient.interceptors.request.use((config) => {
+  const csrfMatch = document.cookie.match(/(?:^|; )csrf_token=([^;]*)/);
+  if (csrfMatch) {
+    config.headers['X-CSRF-Token'] = decodeURIComponent(csrfMatch[1]);
+  }
+
+  return config;
+});
+
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {

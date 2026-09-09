@@ -9,3 +9,4 @@ pwdlib[argon2]
 cryptography
 python-multipart
 slowapi
+pyotp
