@@ -27,6 +27,8 @@ const navigation = [
   { label: 'Dashboard', path: '/dashboard', icon: <DashboardOutlined /> },
   { label: 'Passwords', path: '/passwords', icon: <KeyOutlined /> },
   { label: 'Settings', path: '/settings', icon: <SettingsOutlined /> },
+  { label: 'categories', path: '/categories', icon: <SettingsOutlined /> },
+  { label: 'logout', path: '/logout', icon: <SettingsOutlined /> },
 ];
 
 function AppLayout() {
@@ -37,10 +39,7 @@ function AppLayout() {
       <Toolbar sx={{ px: 3 }}>
         <Box>
           <Typography variant="overline" sx={{ color: '#79d1c3', letterSpacing: 1.5 }}>
-            Delph
-          </Typography>
-          <Typography variant="h6" sx={{ fontWeight: 700, lineHeight: 1 }}>
-            Vault
+            Delph Vault
           </Typography>
         </Box>
       </Toolbar>

@@ -4,3 +4,6 @@ psycopg[binary]
 python-dotenv
 alembic
 uvicorn
+PyJWT
+pwdlib[argon2]
+python-multipart
