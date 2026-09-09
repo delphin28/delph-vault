@@ -1,16 +1,18 @@
-import axios from 'axios';
+import apiClient from './apiClient';
 
-const authApi = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:8000',
-  headers: {
-    'Content-Type': 'application/x-www-form-urlencoded',
-  },
-});
+export function logout() {
+  localStorage.removeItem('access_token');
+}
 
 export async function login(email, password) {
-  const response = await authApi.post(
+  const response = await apiClient.post(
     '/auth/login',
-    new URLSearchParams({ username: email, password })
+    new URLSearchParams({ username: email, password }),
+    {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+    }
   );
 
   return response.data;

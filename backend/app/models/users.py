@@ -8,7 +8,7 @@ class Users(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     username: Mapped[str] = mapped_column(String(20), unique=True, nullable=False)
     email : Mapped[str] = mapped_column(String(30), unique= True,nullable=False)
-    master_password_hash: Mapped[str] = mapped_column(String(60), nullable=False)
+    master_password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     
     passwords = relationship(
         "Passwords",

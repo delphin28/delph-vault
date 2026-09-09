@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Outlet, NavLink } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import {
   AppBar,
   Box,
@@ -16,10 +16,13 @@ import {
 } from '@mui/material';
 import {
   DashboardOutlined,
+  CategoryOutlined,
   KeyOutlined,
+  LogoutOutlined,
   Menu as MenuIcon,
   SettingsOutlined,
 } from '@mui/icons-material';
+import { logout } from '../../api/authApi';
 
 const drawerWidth = 248;
 
@@ -27,12 +30,18 @@ const navigation = [
   { label: 'Dashboard', path: '/dashboard', icon: <DashboardOutlined /> },
   { label: 'Passwords', path: '/passwords', icon: <KeyOutlined /> },
   { label: 'Settings', path: '/settings', icon: <SettingsOutlined /> },
-  { label: 'categories', path: '/categories', icon: <SettingsOutlined /> },
-  { label: 'logout', path: '/logout', icon: <SettingsOutlined /> },
+  { label: 'Categories', path: '/categories', icon: <CategoryOutlined /> },
+  { label: 'Logout', path: '/logout', icon: <LogoutOutlined /> },
 ];
 
 function AppLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const navigate = useNavigate();
+
+  function handleLogout() {
+    logout();
+    navigate('/');
+  }
 
   const drawer = (
     <Box sx={{ height: '100%', bgcolor: '#101c2c', color: '#dbe6f4' }}>
@@ -48,9 +57,14 @@ function AppLayout() {
         {navigation.map((item) => (
           <ListItemButton
             key={item.path}
-            component={NavLink}
-            to={item.path}
-            onClick={() => setMobileOpen(false)}
+            component={item.path === '/logout' ? 'button' : NavLink}
+            to={item.path === '/logout' ? undefined : item.path}
+            onClick={() => {
+              setMobileOpen(false);
+              if (item.path === '/logout') {
+                handleLogout();
+              }
+            }}
             sx={{
               mb: 0.75,
               borderRadius: 1.5,

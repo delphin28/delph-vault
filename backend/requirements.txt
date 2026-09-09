@@ -6,4 +6,5 @@ alembic
 uvicorn
 PyJWT
 pwdlib[argon2]
+cryptography
 python-multipart

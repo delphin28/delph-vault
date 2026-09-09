@@ -5,6 +5,7 @@ import LoginPage from "../features/login/Login";
 import DashboardPage from "../features/dashboard/pages/DashboardPage";
 import SettingsPage from "../features/settings/pages/SettingsPage";
 import PasswordListPage from "../features/vault/pages/PasswordListPage";
+import CategoriesPage from "../features/categories/pages/CategoriesPage";
 
 
 function ProtectedRoute({ children }) {
@@ -13,7 +14,7 @@ function ProtectedRoute({ children }) {
   return token ? children : <Navigate to="/" replace />;
 }
 
-function AppRoutes({}) {
+function AppRoutes() {
   return (
     <BrowserRouter>
       <Routes>
@@ -24,6 +25,7 @@ function AppRoutes({}) {
         <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/passwords" element={<PasswordListPage />} />
+          <Route path="/categories" element={<CategoriesPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
       </Routes>

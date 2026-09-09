@@ -12,9 +12,9 @@ from app.repositories.users_repository import get_user_by_email
 
 password_hash = PasswordHash.recommended()
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
-JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
+JWT_ALGORITHM = os.getenv("JWT_ALGORITHM")
 JWT_ACCESS_TOKEN_EXPIRE_MINUTES = int(
-    os.getenv("JWT_ACCESS_TOKEN_EXPIRE_MINUTES", "30")
+    os.getenv("JWT_ACCESS_TOKEN_EXPIRE_MINUTES")
 )
 
 if not JWT_SECRET_KEY:

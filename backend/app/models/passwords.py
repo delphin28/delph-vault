@@ -23,7 +23,7 @@ class Passwords(Base):
     )
 
     Password: Mapped[str] = mapped_column(
-        String(100),
+        String(512),
         nullable=False
     )
 

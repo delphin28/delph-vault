@@ -9,6 +9,10 @@ from sqlalchemy import select
 
 from app.models.users import Users
 
+
+def get_user_by_id(db: Session, user_id: int) -> Users | None:
+    return db.scalar(select(Users).where(Users.id == user_id))
+
 def get_user_by_email(db: Session, email: str) -> Users | None:
     """
     Get a user by email.
