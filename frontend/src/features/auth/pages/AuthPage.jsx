@@ -1,32 +1,54 @@
 import './AuthPage.css';
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { login } from '../../../api/authApi';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { login, register } from '../../../api/authApi';
 
 function AuthPage({ initialMode = 'LOGIN' }) {
-  const [mode, setMode] = useState(initialMode.toUpperCase());
+  const [mode] = useState(initialMode.toUpperCase());
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isRegistering = mode === 'REGISTER';
   const navigate = useNavigate();
+  const location = useLocation();
+
+  function getApiErrorMessage(apiError, fallback) {
+    const detail = apiError.response?.data?.detail;
+    if (typeof detail === 'string') return detail;
+    if (Array.isArray(detail)) {
+      return detail.map((item) => item.msg).join(' ');
+    }
+    if (!apiError.response) return 'The backend is unavailable. Please try again.';
+    return fallback;
+  }
 
   async function handleSubmit(event) {
     event.preventDefault();
     setError('');
 
-    if (isRegistering) {
+    const formData = new FormData(event.currentTarget);
+
+    if (isRegistering && formData.get('password') !== formData.get('confirm-password')) {
+      setError('Passwords do not match.');
       return;
     }
 
-    const formData = new FormData(event.currentTarget);
     setIsSubmitting(true);
 
     try {
-      const result = await login(formData.get('email'), formData.get('password'));
-      localStorage.setItem('access_token', result.access_token);
-      navigate('/dashboard');
-    } catch {
-      setError('Unable to sign in with those credentials.');
+      if (isRegistering) {
+        await register(formData.get('username'), formData.get('email'), formData.get('password'));
+        navigate('/', { replace: true, state: { registered: true } });
+      } else {
+        await login(formData.get('email'), formData.get('password'));
+        navigate('/dashboard');
+      }
+    } catch (apiError) {
+      setError(
+        getApiErrorMessage(
+          apiError,
+          isRegistering ? 'Unable to create this account.' : 'Unable to sign in with those credentials.'
+        )
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -42,6 +64,10 @@ function AuthPage({ initialMode = 'LOGIN' }) {
             ? 'Create your secure vault account.'
             : 'Keep your credentials organized, protected, and close at hand.'}
         </p>
+
+        {!isRegistering && location.state?.registered && (
+          <p role="status" className="auth-success">Account created. You can sign in now.</p>
+        )}
 
         <form className="login-form" onSubmit={handleSubmit}>
           {isRegistering && (
@@ -81,7 +107,7 @@ function AuthPage({ initialMode = 'LOGIN' }) {
 
         <p className="auth-switch">
           {isRegistering ? 'Already have an account?' : 'Need an account?'}
-          <button type="button" className="auth-switch-button" onClick={() => setMode(isRegistering ? 'LOGIN' : 'REGISTER')}>
+          <button type="button" className="auth-switch-button" onClick={() => navigate(isRegistering ? '/' : '/register')}>
             {isRegistering ? 'Sign in' : 'Register'}
           </button>
         </p>

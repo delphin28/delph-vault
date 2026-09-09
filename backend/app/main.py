@@ -1,5 +1,7 @@
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 from fastapi import Depends
@@ -12,14 +14,18 @@ from app.database.connection import get_db
 from app.database.init_db import init_db
 from app.database.seed import seed_users, seed_vault
 from app.dependencies import get_current_user
+from app.rate_limit import limiter
 
 app = FastAPI()
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
         "http://127.0.0.1:3000",
+        "https://localhost:8443",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -29,7 +35,6 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(
     user_router,
-    dependencies=[Depends(get_current_user)],
 )
 app.include_router(
     password_router,

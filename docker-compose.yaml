@@ -23,8 +23,6 @@ services:
     container_name: backend
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     working_dir: /app
-    ports:
-      - "8000:8000"
     volumes:
       - ./backend:/app
     environment:
@@ -46,13 +44,26 @@ services:
       - ./frontend:/app
       - frontend_node_modules:/app/node_modules
     command: npm start
-    ports:
-      - "3000:3000"
     environment:
-      REACT_APP_API_URL: http://localhost:8000
+      REACT_APP_API_URL: /api
       CHOKIDAR_USEPOLLING: "true"
       WATCHPACK_POLLING: "true"
     networks:
+      - frontend_network
+
+  https:
+    image: nginx:1.27-alpine
+    container_name: delph-vault-https
+    ports:
+      - "8443:443"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./certs:/etc/nginx/certs:ro
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - backend_network
       - frontend_network
 
 volumes:

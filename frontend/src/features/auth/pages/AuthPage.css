@@ -174,3 +174,10 @@
     font-size: 0.88rem;
     text-align: center;
 }
+
+.auth-success {
+    margin: 16px 0 0;
+    color: #287c6c;
+    font-size: 0.88rem;
+    text-align: center;
+}

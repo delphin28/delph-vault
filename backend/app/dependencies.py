@@ -1,8 +1,7 @@
 import os
 
 import jwt
-from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi import Cookie, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.database.connection import get_db
@@ -12,11 +11,11 @@ from app.repositories.users_repository import get_user_by_id
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+ACCESS_TOKEN_COOKIE = "access_token"
 
 
 def get_current_user(
-    token: str = Depends(oauth2_scheme),
+    token: str | None = Cookie(default=None, alias=ACCESS_TOKEN_COOKIE),
     db: Session = Depends(get_db),
 ) -> Users:
     credentials_exception = HTTPException(
@@ -24,6 +23,9 @@ def get_current_user(
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
+
+    if not token:
+        raise credentials_exception
 
     try:
         payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])

@@ -25,6 +25,7 @@ import {
   AddOutlined,
   DeleteOutlineOutlined,
   LanguageOutlined,
+  RefreshOutlined,
   VisibilityOffOutlined,
   VisibilityOutlined,
 } from '@mui/icons-material';
@@ -32,6 +33,12 @@ import { getCategories } from '../../../api/categoryApi';
 import { createPassword, deletePassword, getPasswords } from '../../../api/vaultApi';
 
 const emptyForm = { name: '', url: '', password: '', category_id: '' };
+const passwordCharacters = {
+  lowercase: 'abcdefghijklmnopqrstuvwxyz',
+  uppercase: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+  numbers: '0123456789',
+  symbols: '!@#$%^&*()-_=+[]{}:,.?',
+};
 
 function ServiceLogo({ name, url }) {
   const [hasError, setHasError] = useState(false);
@@ -54,6 +61,37 @@ function ServiceLogo({ name, url }) {
   );
 }
 
+function generateSecurePassword(length, options) {
+  const selectedSets = Object.entries(options)
+    .filter(([, enabled]) => enabled)
+    .map(([key]) => passwordCharacters[key]);
+  const characterPool = selectedSets.join('');
+
+  if (!characterPool) return '';
+
+  const requiredCharacters = selectedSets.map((characterSet) => {
+    const randomValue = new Uint32Array(1);
+    window.crypto.getRandomValues(randomValue);
+    return characterSet[randomValue[0] % characterSet.length];
+  });
+  const generatedCharacters = [...requiredCharacters];
+  const randomValues = new Uint32Array(Math.max(0, length - generatedCharacters.length));
+  window.crypto.getRandomValues(randomValues);
+
+  randomValues.forEach((randomValue) => {
+    generatedCharacters.push(characterPool[randomValue % characterPool.length]);
+  });
+
+  for (let index = generatedCharacters.length - 1; index > 0; index -= 1) {
+    const randomValue = new Uint32Array(1);
+    window.crypto.getRandomValues(randomValue);
+    const swapIndex = randomValue[0] % (index + 1);
+    [generatedCharacters[index], generatedCharacters[swapIndex]] = [generatedCharacters[swapIndex], generatedCharacters[index]];
+  }
+
+  return generatedCharacters.join('');
+}
+
 function PasswordListPage() {
   const [passwords, setPasswords] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -62,6 +100,13 @@ function PasswordListPage() {
   const [revealedId, setRevealedId] = useState(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
+  const [generatorLength, setGeneratorLength] = useState(20);
+  const [generatorOptions, setGeneratorOptions] = useState({
+    lowercase: true,
+    uppercase: true,
+    numbers: true,
+    symbols: true,
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
@@ -105,6 +150,19 @@ function PasswordListPage() {
 
   function updateForm(event) {
     setForm((current) => ({ ...current, [event.target.name]: event.target.value }));
+  }
+
+  function generatePassword() {
+    const generatedPassword = generateSecurePassword(generatorLength, generatorOptions);
+    setForm((current) => ({ ...current, password: generatedPassword }));
+  }
+
+  function toggleGeneratorOption(option) {
+    setGeneratorOptions((current) => {
+      const enabledOptions = Object.values(current).filter(Boolean).length;
+      if (current[option] && enabledOptions === 1) return current;
+      return { ...current, [option]: !current[option] };
+    });
   }
 
   async function handleCreate(event) {
@@ -203,7 +261,25 @@ function PasswordListPage() {
           <DialogContent sx={{ display: 'grid', gap: 2, pt: 2 }}>
             <TextField required name="name" label="Service name" value={form.name} onChange={updateForm} inputProps={{ maxLength: 15 }} />
             <TextField name="url" label="URL" value={form.url} onChange={updateForm} inputProps={{ maxLength: 100 }} />
-            <TextField required name="password" label="Password" type="password" value={form.password} onChange={updateForm} />
+            <Box className="vault-generator">
+              <Stack direction="row" justifyContent="space-between" alignItems="center" gap={2}>
+                <Typography className="vault-generator__title">Password</Typography>
+                <Button type="button" size="small" variant="outlined" startIcon={<RefreshOutlined />} onClick={generatePassword}>
+                  Generate
+                </Button>
+              </Stack>
+              <TextField required fullWidth name="password" label="Enter manually or generate" type="password" value={form.password} onChange={updateForm} />
+              <Stack className="vault-generator__controls" direction={{ xs: 'column', sm: 'row' }} gap={2}>
+                <TextField label="Length" type="number" value={generatorLength} onChange={(event) => setGeneratorLength(Math.min(64, Math.max(8, Number(event.target.value) || 8)))} inputProps={{ min: 8, max: 64 }} size="small" />
+                <Stack direction="row" gap={1} flexWrap="wrap" alignItems="center">
+                  {Object.keys(generatorOptions).map((option) => (
+                    <Button key={option} type="button" size="small" variant={generatorOptions[option] ? 'contained' : 'outlined'} onClick={() => toggleGeneratorOption(option)}>
+                      {option === 'lowercase' ? 'a-z' : option === 'uppercase' ? 'A-Z' : option === 'numbers' ? '0-9' : 'Symbols'}
+                    </Button>
+                  ))}
+                </Stack>
+              </Stack>
+            </Box>
             <FormControl required>
               <InputLabel id="entry-category-label">Category</InputLabel>
               <Select labelId="entry-category-label" name="category_id" label="Category" value={form.category_id} onChange={updateForm}>

@@ -4,6 +4,12 @@
 .env.*
 !.env.example
 
+# Local HTTPS certificates
+certs/
+*.crt
+*.key
+*.pem
+
 # Python
 __pycache__/
 *.py[cod]
@@ -13,6 +19,7 @@ __pycache__/
 .ruff_cache/
 .coverage
 htmlcov/
+coverage/
 
 # Virtual environments
 .venv/

@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { BrowserRouter, Navigate, Routes, Route } from "react-router-dom";
 
 import AppLayout from "../components/layout/AppLayout";
@@ -6,12 +7,24 @@ import DashboardPage from "../features/dashboard/pages/DashboardPage";
 import SettingsPage from "../features/settings/pages/SettingsPage";
 import PasswordListPage from "../features/vault/pages/PasswordListPage";
 import CategoriesPage from "../features/categories/pages/CategoriesPage";
+import RegisterPage from "../features/register/register";
+import { getCurrentUser } from "../api/authApi";
 
 
 function ProtectedRoute({ children }) {
-  const token = localStorage.getItem('access_token');
+  const [isChecking, setIsChecking] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  return token ? children : <Navigate to="/" replace />;
+  useEffect(() => {
+    getCurrentUser()
+      .then(() => setIsAuthenticated(true))
+      .catch(() => setIsAuthenticated(false))
+      .finally(() => setIsChecking(false));
+  }, []);
+
+  if (isChecking) return null;
+
+  return isAuthenticated ? children : <Navigate to="/" replace />;
 }
 
 function AppRoutes() {
@@ -22,6 +35,7 @@ function AppRoutes() {
           path="/"
           element={<LoginPage /> }
         />
+        <Route path="/register" element={<RegisterPage />} />
         <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/passwords" element={<PasswordListPage />} />

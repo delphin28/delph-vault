@@ -1,7 +1,7 @@
 import apiClient from './apiClient';
 
-export function logout() {
-  localStorage.removeItem('access_token');
+export async function logout() {
+  await apiClient.post('/auth/logout');
 }
 
 export async function login(email, password) {
@@ -14,6 +14,21 @@ export async function login(email, password) {
       },
     }
   );
+
+  return response.data;
+}
+
+export async function getCurrentUser() {
+  const response = await apiClient.get('/auth/me');
+  return response.data;
+}
+
+export async function register(username, email, password) {
+  const response = await apiClient.post('/users', {
+    username,
+    email,
+    password,
+  });
 
   return response.data;
 }

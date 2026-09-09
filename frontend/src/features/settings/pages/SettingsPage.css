@@ -88,6 +88,14 @@
   content: '';
 }
 
+.settings-security {
+  max-width: 720px;
+}
+
+.settings-security__actions {
+  padding-top: 4px;
+}
+
 @media (max-width: 680px) {
   .settings-page__grid {
     grid-template-columns: 1fr;

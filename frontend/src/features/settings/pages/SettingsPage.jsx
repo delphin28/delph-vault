@@ -1,30 +1,20 @@
-import { useState } from 'react';
-import { Alert, Box, Button, Card, Divider, Stack, Typography } from '@mui/material';
+import { useEffect, useState } from 'react';
+import { Alert, Box, Button, Card, Stack, Typography } from '@mui/material';
 import { DownloadOutlined, LogoutOutlined, SecurityOutlined } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { logout } from '../../../api/authApi';
+import { getCurrentUser, logout } from '../../../api/authApi';
 import { exportPasswords } from '../../../api/vaultApi';
 import './SettingsPage.css';
 
-function getTokenClaims() {
-  const token = localStorage.getItem('access_token');
-  if (!token) return {};
-
-  try {
-    const payload = token.split('.')[1];
-    return JSON.parse(window.atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
-  } catch {
-    return {};
-  }
-}
-
 function SettingsPage() {
   const navigate = useNavigate();
+  const [user, setUser] = useState(null);
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState('');
-  const claims = getTokenClaims();
-  const apiUrl = process.env.REACT_APP_API_URL;
 
+  useEffect(() => {
+    getCurrentUser().then(setUser).catch(() => setUser(null));
+  }, []);
   function handleLogout() {
     logout();
     navigate('/');
@@ -66,8 +56,8 @@ function SettingsPage() {
           </div>
           <div className="settings-panel__body">
             <Stack gap={2}>
-              <div><Typography variant="caption" color="text.secondary">Email</Typography><Typography className="settings-value">{claims.email || 'Unavailable'}</Typography></div>
-              <div><Typography variant="caption" color="text.secondary">User Name</Typography><Typography className="settings-value">{claims.user || 'Unavailable'}</Typography></div>
+              <div><Typography variant="caption" color="text.secondary">Email</Typography><Typography className="settings-value">{user?.email || 'Unavailable'}</Typography></div>
+              <div><Typography variant="caption" color="text.secondary">User Name</Typography><Typography className="settings-value">{user?.username || 'Unavailable'}</Typography></div>
             </Stack>
           </div>
         </Card>
@@ -80,7 +70,7 @@ function SettingsPage() {
           <div className="settings-panel__body">
             <Stack gap={2}>
               <div><Typography variant="caption" color="text.secondary">Status</Typography><Typography className="settings-status">Authenticated</Typography></div>
-              <div><Typography variant="caption" color="text.secondary">Token expiry</Typography><Typography className="settings-value">{claims.exp ? new Date(claims.exp * 1000).toLocaleString() : 'Unavailable'}</Typography></div>
+              <div><Typography variant="caption" color="text.secondary">Session storage</Typography><Typography className="settings-value">HttpOnly secure cookie</Typography></div>
             </Stack>
           </div>
         </Card>
@@ -91,12 +81,12 @@ function SettingsPage() {
             <div className="settings-panel__description">Vault secrets are encrypted before they are stored.</div>
           </div>
           <div className="settings-panel__body">
-            <Stack direction={{ xs: 'column', sm: 'row' }} gap={2} alignItems={{ sm: 'center' }} justifyContent="space-between">
+            <Stack className="settings-security" gap={2}>
               <Stack direction="row" gap={1.5} alignItems="center">
                 <SecurityOutlined color="primary" />
                 <Box><Typography className="settings-value">Encrypted vault storage</Typography><Typography variant="body2" color="text.secondary">Protected API requests use your access token.</Typography></Box>
               </Stack>
-              <Stack direction={{ xs: 'column', sm: 'row' }} gap={1}>
+              <Stack className="settings-security__actions" direction={{ xs: 'column', sm: 'row' }} gap={1}>
                 <Button variant="outlined" startIcon={<DownloadOutlined />} onClick={handleExport} disabled={isExporting}>
                   {isExporting ? 'Exporting...' : 'Export JSON'}
                 </Button>
@@ -105,11 +95,6 @@ function SettingsPage() {
             </Stack>
             {exportError && <Alert severity="error" sx={{ mt: 2 }}>{exportError}</Alert>}
           </div>
-        </Card>
-
-        <Card className="settings-panel settings-panel--wide" variant="outlined">
-          <div className="settings-panel__header"><Typography className="settings-panel__title" variant="h6">Connection</Typography></div>
-          <div className="settings-panel__body"><Typography variant="caption" color="text.secondary">Backend API</Typography><Typography className="settings-value">{apiUrl}</Typography><Divider sx={{ my: 2 }} /><Typography variant="body2" color="text.secondary">Account changes and master-password rotation will be added when their backend endpoints are available.</Typography></div>
         </Card>
       </div>
     </Box>

@@ -1,3 +1,7 @@
+import AuthPage from '../auth/pages/AuthPage';
+
 function RegisterPage() {
-    return AuthPage({ ConnectionMode: "REGISTER" });
+    return <AuthPage initialMode="REGISTER" />;
 }
+
+export default RegisterPage;

@@ -40,3 +40,15 @@ def get_user_by_username(db: Session, username: str) -> Users | None:
     return db.scalar(select(Users).where(Users.username == username))
 
 
+def create_user(db: Session, *, username: str, email: str, password_hash: str) -> Users:
+    user = Users(
+        username=username,
+        email=email,
+        master_password_hash=password_hash,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+

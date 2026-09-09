@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Alert, Box, Button, CircularProgress, Typography } from '@mui/material';
-import { AddOutlined, ArrowForwardOutlined, KeyOutlined, SettingsOutlined } from '@mui/icons-material';
+import { AddOutlined, ArrowForwardOutlined, KeyOutlined } from '@mui/icons-material';
 import { getCategories } from '../../../api/categoryApi';
 import { getPasswords } from '../../../api/vaultApi';
 import './DashboardPage.css';
@@ -92,7 +92,6 @@ function DashboardPage() {
           <div className="dashboard-panel__body dashboard-actions">
             <Button component={Link} to="/passwords" variant="contained" startIcon={<AddOutlined />}>Add password</Button>
             <Button component={Link} to="/passwords" variant="outlined" startIcon={<KeyOutlined />}>Open vault</Button>
-            <Button component={Link} to="/settings" variant="text" startIcon={<SettingsOutlined />}>Account settings</Button>
           </div>
         </section>
       </div>
