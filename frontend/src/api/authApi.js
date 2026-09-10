@@ -62,3 +62,30 @@ export async function regenerateBackupCodes(password, otp) {
   });
   return response.data;
 }
+
+export async function checkMfa(email) {
+  const response = await apiClient.post(
+    '/auth/check-mfa',
+    new URLSearchParams({ email }),
+    {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    }
+  );
+  return response.data;
+}
+
+export async function resetPassword(email, newPassword, otp, backupCode) {
+  const response = await apiClient.post(
+    '/auth/reset-password',
+    new URLSearchParams({
+      email,
+      new_password: newPassword,
+      ...(otp ? { otp } : {}),
+      ...(backupCode ? { backup_code: backupCode } : {}),
+    }),
+    {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    }
+  );
+  return response.data;
+}

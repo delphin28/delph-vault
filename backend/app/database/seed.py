@@ -1,6 +1,8 @@
 import json
+import secrets
 from pathlib import Path
 
+import pyotp
 from sqlalchemy.orm import Session
 
 from app.models.categories import Category
@@ -26,13 +28,36 @@ def seed_users(db: Session) -> Users:
     admin = Users(
         username="Admin",
         email="admin@adsecure.com",
-        # The master password should be hashed before being stored in the database.
-        master_password_hash=hash_password("your_master_password")
+        master_password_hash=hash_password("AstrongPassword123!"),
     )
+
+    # Enable MFA for admin user
+    secret = pyotp.random_base32()
+    admin.totp_secret = encrypt_secret(secret)
+    admin.totp_enabled = True
+    
+    # Generate and hash backup codes
+    backup_codes = [secrets.token_hex(4).upper() for _ in range(10)]
+    formatted_backup_codes = [code[:4] + "-" + code[4:] for code in backup_codes]
+    admin.backup_codes = json.dumps([hash_password(code) for code in formatted_backup_codes])
 
     db.add(admin)
     db.commit()
     db.refresh(admin)
+    
+    # Print the TOTP secret and backup codes for testing
+    print("\n" + "="*60)
+    print("ADMIN USER SETUP")
+    print("="*60)
+    print(f"Email: admin@adsecure.com")
+    print(f"Password: AstrongPassword123!")
+    print(f"MFA Secret (for authenticator app): {secret}")
+    print(f"TOTP URI: {pyotp.TOTP(secret).provisioning_uri(name='admin@adsecure.com', issuer_name='Delph Vault')}")
+    print(f"\nBackup Codes:")
+    for code in formatted_backup_codes:
+        print(f"  {code}")
+    print("="*60 + "\n")
+    
     return admin
 
 

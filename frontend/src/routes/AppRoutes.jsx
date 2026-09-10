@@ -1,28 +1,33 @@
-import { useEffect, useState } from "react";
 import { BrowserRouter, Navigate, Routes, Route } from "react-router-dom";
+import { useEffect, useState } from "react";
 
 import AppLayout from "../components/layout/AppLayout";
 import LoginPage from "../features/login/Login";
 import DashboardPage from "../features/dashboard/pages/DashboardPage";
 import SettingsPage from "../features/settings/pages/SettingsPage";
 import PasswordListPage from "../features/vault/pages/PasswordListPage";
-import CategoriesPage from "../features/categories/pages/CategoriesPage";
-import RegisterPage from "../features/register/register";
+import ForgotPasswordPage from "../features/forgot-password/ForgotPasswordPage";
 import { getCurrentUser } from "../api/authApi";
 
 
 function ProtectedRoute({ children }) {
-  const [isChecking, setIsChecking] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(null);
 
   useEffect(() => {
-    getCurrentUser()
-      .then(() => setIsAuthenticated(true))
-      .catch(() => setIsAuthenticated(false))
-      .finally(() => setIsChecking(false));
+    const checkAuth = async () => {
+      try {
+        await getCurrentUser();
+        setIsAuthenticated(true);
+      } catch {
+        setIsAuthenticated(false);
+      }
+    };
+    checkAuth();
   }, []);
 
-  if (isChecking) return null;
+  if (isAuthenticated === null) {
+    return <div>Loading...</div>;
+  }
 
   return isAuthenticated ? children : <Navigate to="/" replace />;
 }
@@ -35,11 +40,13 @@ function AppRoutes() {
           path="/"
           element={<LoginPage /> }
         />
-        <Route path="/register" element={<RegisterPage />} />
+        <Route
+          path ="/forgot-password"  
+          element = {<ForgotPasswordPage />}
+        />
         <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/passwords" element={<PasswordListPage />} />
-          <Route path="/categories" element={<CategoriesPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
       </Routes>

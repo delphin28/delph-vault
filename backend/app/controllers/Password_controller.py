@@ -14,7 +14,7 @@ from app.repositories.passwords_repository import (
 from app.schemas import PasswordCreate, PasswordResponse, PasswordRevealResponse, PasswordUpdate
 from app.services.export_crypto import encrypt_export
 from app.services.vault_crypto import decrypt_secret, encrypt_secret
-from app.utils.security import hash_password
+from app.utils.security import verify_password
 
 router = APIRouter(
     prefix="/passwords",
@@ -46,7 +46,7 @@ def export_passwords(
     db: Session = Depends(get_db),
     current_user: Users = Depends(get_current_user),
 ):
-    if not password_hash.verify(password, current_user.master_password_hash):
+    if not verify_password(password, current_user.master_password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid master password")
 
     exported_entries = []

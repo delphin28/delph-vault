@@ -1,54 +1,96 @@
 import './AuthPage.css';
 import { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { login, register } from '../../../api/authApi';
+import { useNavigate } from 'react-router-dom';
+import { login, resetPassword as resetPasswordAPI, checkMfa } from '../../../api/authApi';
 
 function AuthPage({ initialMode = 'LOGIN' }) {
-  const [mode] = useState(initialMode.toUpperCase());
+  const [mode, setMode] = useState(initialMode.toUpperCase());
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const isRegistering = mode === 'REGISTER';
+  const [mfaRequired, setMfaRequired] = useState(false);
+  const [mfaMethod, setMfaMethod] = useState('otp'); // 'otp' or 'backup_code'
+  const [resetEmail, setResetEmail] = useState(''); // Store email for password reset flow
+  const [newPassword, setNewPassword] = useState(''); // Store new password for password reset flow
   const navigate = useNavigate();
-  const location = useLocation();
 
-  function getApiErrorMessage(apiError, fallback) {
-    const detail = apiError.response?.data?.detail;
-    if (typeof detail === 'string') return detail;
-    if (Array.isArray(detail)) {
-      return detail.map((item) => item.msg).join(' ');
-    }
-    if (!apiError.response) return 'The backend is unavailable. Please try again.';
-    return fallback;
-  }
+  const isForgotPasswordMode = mode === 'FORGOT_PASSWORD';
+  const isRegistering = mode === 'REGISTER';
 
   async function handleSubmit(event) {
     event.preventDefault();
     setError('');
 
-    const formData = new FormData(event.currentTarget);
-
-    if (isRegistering && formData.get('password') !== formData.get('confirm-password')) {
-      setError('Passwords do not match.');
+    if (isRegistering) {
+      // Handle registration - to be implemented
       return;
     }
 
+    if (isForgotPasswordMode) {
+      return handlePasswordReset(event);
+    }
+
+    // Handle login
+    const formData = new FormData(event.currentTarget);
     setIsSubmitting(true);
 
     try {
-      if (isRegistering) {
-        await register(formData.get('username'), formData.get('email'), formData.get('password'));
-        navigate('/', { replace: true, state: { registered: true } });
-      } else {
-        await login(formData.get('email'), formData.get('password'), formData.get('otp'), formData.get('backup-code'));
-        navigate('/dashboard');
+      await login(formData.get('email'), formData.get('password'));
+      // Token is set as HTTP-only cookie by backend
+      navigate('/dashboard');
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Unable to sign in with those credentials.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handlePasswordReset(event) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    
+    // If MFA is already required, submit with MFA using stored email and password
+    if (mfaRequired) {
+      setIsSubmitting(true);
+      try {
+        const otp = mfaMethod === 'otp' ? formData.get('otp') : null;
+        const backupCode = mfaMethod === 'backup_code' ? formData.get('backup-code') : null;
+
+        await resetPasswordAPI(resetEmail, newPassword, otp, backupCode);
+        setError('');
+        setMfaRequired(false);
+        setResetEmail('');
+        setNewPassword('');
+        alert('Password reset successfully! Please log in with your new password.');
+        setMode('LOGIN');
+      } catch (err) {
+        setError(err.response?.data?.detail || 'Failed to reset password');
+      } finally {
+        setIsSubmitting(false);
       }
-    } catch (apiError) {
-      setError(
-        getApiErrorMessage(
-          apiError,
-          isRegistering ? 'Unable to create this account.' : 'Unable to sign in with those credentials.'
-        )
-      );
+      return;
+    }
+
+    // First time: check if MFA is enabled
+    const email = formData.get('email');
+    const password = formData.get('password');
+    
+    setIsSubmitting(true);
+    try {
+      const mfaStatus = await checkMfa(email);
+
+      if (mfaStatus.mfa_enabled) {
+        // MFA enabled: store credentials and proceed with MFA verification
+        setResetEmail(email);
+        setNewPassword(password);
+        setMfaRequired(true);
+        setError('');
+      } else {
+        // MFA is disabled - cannot reset password
+        setError('Multi-factor authentication is required to reset your password. Please enable MFA in your account settings first.');
+        setMfaRequired(false);
+      }
+    } catch (err) {
+      setError(err.response?.data?.detail || 'User not found');
     } finally {
       setIsSubmitting(false);
     }
@@ -60,14 +102,12 @@ function AuthPage({ initialMode = 'LOGIN' }) {
         <p className="login-eyebrow">Private workspace</p>
         <h1 className="login-title" id="login-title">Delph Vault</h1>
         <p className="login-description">
-          {isRegistering
+          {!isRegistering && !isForgotPasswordMode
             ? 'Create your secure vault account.'
-            : 'Keep your credentials organized, protected, and close at hand.'}
+            : isRegistering
+            ? 'Keep your credentials organized, protected, and close at hand.'
+            : 'Enter your email to reset your master password.'}
         </p>
-
-        {!isRegistering && location.state?.registered && (
-          <p role="status" className="auth-success">Account created. You can sign in now.</p>
-        )}
 
         <form className="login-form" onSubmit={handleSubmit}>
           {isRegistering && (
@@ -79,26 +119,25 @@ function AuthPage({ initialMode = 'LOGIN' }) {
             </>
           )}
 
-          <label htmlFor="email">
-            Email <span aria-hidden="true">*</span>
-          </label>
-          <input type="email" id="email" name="email" autoComplete="email" required />
-
-          <label htmlFor="password">
-            Master password <span aria-hidden="true">*</span>
-          </label>
-          <input type="password" id="password" name="password" autoComplete={isRegistering ? 'new-password' : 'current-password'} required />
-
-          {!isRegistering && (
+          {!mfaRequired && (
             <>
-              <label htmlFor="otp">Authenticator code <span aria-hidden="true">(if enabled)</span></label>
-              <input type="text" id="otp" name="otp" inputMode="numeric" pattern="[0-9]{6}" maxLength="6" autoComplete="one-time-code" />
-              <label htmlFor="backup-code">Backup code <span aria-hidden="true">(alternative)</span></label>
-              <input type="text" id="backup-code" name="backup-code" autoComplete="off" />
+              <label htmlFor="email">
+                Email <span aria-hidden="true">*</span>
+              </label>
+              <input type="email" id="email" name="email" autoComplete="email" required />
             </>
           )}
 
-          {isRegistering && (
+          {!mfaRequired && (
+            <>
+              <label htmlFor="password">
+                {isRegistering ? 'Master' : isForgotPasswordMode ? 'New master' : 'Master'} password <span aria-hidden="true">*</span>
+              </label>
+              <input type="password" id="password" name="password" autoComplete={isRegistering ? 'new-password' : 'current-password'} required />
+            </>
+          )}
+
+          {!mfaRequired && (isRegistering || isForgotPasswordMode) && (
             <>
               <label htmlFor="confirm-password">
                 Confirm password <span aria-hidden="true">*</span>
@@ -107,20 +146,101 @@ function AuthPage({ initialMode = 'LOGIN' }) {
             </>
           )}
 
-          <button type="submit" className="login-submit">
-            {isSubmitting ? 'Signing in...' : isRegistering ? 'Create account' : 'Unlock vault'}
+          {mfaRequired && (
+            <>
+              <p className="mfa-notice">Multi-factor authentication is required to reset your password.</p>
+              <div className="mfa-method-selector">
+                <label>
+                  <input
+                    type="radio"
+                    name="mfa-method"
+                    value="otp"
+                    checked={mfaMethod === 'otp'}
+                    onChange={() => setMfaMethod('otp')}
+                  />
+                  Authenticator App
+                </label>
+                <label>
+                  <input
+                    type="radio"
+                    name="mfa-method"
+                    value="backup_code"
+                    checked={mfaMethod === 'backup_code'}
+                    onChange={() => setMfaMethod('backup_code')}
+                  />
+                  Backup Code
+                </label>
+              </div>
+
+              {mfaMethod === 'otp' && (
+                <>
+                  <label htmlFor="otp">
+                    Authenticator Code <span aria-hidden="true">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="otp"
+                    name="otp"
+                    placeholder="000000"
+                    autoComplete="off"
+                    inputMode="numeric"
+                    maxLength="6"
+                    required
+                  />
+                </>
+              )}
+
+              {mfaMethod === 'backup_code' && (
+                <>
+                  <label htmlFor="backup-code">
+                    Backup Code <span aria-hidden="true">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="backup-code"
+                    name="backup-code"
+                    placeholder="XXXX-XXXX"
+                    autoComplete="off"
+                    required
+                  />
+                </>
+              )}
+            </>
+          )}
+
+          <button type="submit" className="login-submit" disabled={isSubmitting}>
+            {isSubmitting ? 'Processing...' : isForgotPasswordMode && !mfaRequired ? 'Check MFA' : isForgotPasswordMode && mfaRequired ? 'Reset Password' : isRegistering ? 'Create account' : 'Unlock vault'}
           </button>
         </form>
 
         {error && <p role="alert" className="auth-error">{error}</p>}
 
-        <p className="auth-switch">
-          {isRegistering ? 'Already have an account?' : 'Need an account?'}
-          <button type="button" className="auth-switch-button" onClick={() => navigate(isRegistering ? '/' : '/register')}>
-            {isRegistering ? 'Sign in' : 'Register'}
-          </button>
-        </p>
-    </section>
+        {!isForgotPasswordMode && !mfaRequired && (
+          <p className="auth-switch">
+            {isRegistering ? 'Already have an account?' : 'Need an account?'}
+            <button type="button" className="auth-switch-button" onClick={() => setMode(isRegistering ? 'LOGIN' : 'REGISTER')}>
+              {isRegistering ? 'Sign in' : 'Register'}
+            </button>
+          </p>
+        )}
+
+        {!mfaRequired && (
+          <p className="auth-switch">
+            {isForgotPasswordMode ? 'Back to login' : 'Forgot password?'}
+            <button type="button" className="auth-switch-button" onClick={() => setMode(isForgotPasswordMode ? 'LOGIN' : 'FORGOT_PASSWORD')}>
+              {isForgotPasswordMode ? 'Sign in' : 'Reset password'}
+            </button>
+          </p>
+        )}
+
+        {mfaRequired && (
+          <p className="auth-switch">
+            <button type="button" className="auth-switch-button" onClick={() => { setMfaRequired(false); setError(''); }}>
+              Back
+            </button>
+          </p>
+        )}
+      </section>
     </main>
   );
 }
