@@ -1,3 +1,4 @@
+import os
 from hmac import compare_digest
 
 from fastapi import Depends, FastAPI
@@ -15,18 +16,23 @@ from app.controllers.user_controller import router as user_router
 from app.database.connection import get_db
 from app.database.init_db import init_db
 from app.database.seed import seed_users, seed_vault
-from app.dependencies import CSRF_COOKIE, CSRF_HEADER, get_current_user, issue_csrf_token, verify_csrf_token
+from app.dependencies import COOKIE_SECURE, CSRF_COOKIE, CSRF_HEADER, get_current_user, issue_csrf_token, verify_csrf_token
 from app.rate_limit import limiter
 
 app = FastAPI()
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+CORS_ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv("CORS_ALLOWED_ORIGINS", "https://localhost:8443").split(",")
+    if origin.strip()
+]
 
 
 @app.middleware("http")
 async def csrf_protection(request, call_next):
     safe_methods = {"GET", "HEAD", "OPTIONS"}
-    public_paths = {"/auth/login", "/auth/csrf", "/users"}
+    public_paths = {"/auth/csrf"}
     if request.method not in safe_methods and request.url.path not in public_paths:
         csrf_cookie = request.cookies.get(CSRF_COOKIE)
         csrf_header = request.headers.get(CSRF_HEADER)
@@ -41,16 +47,12 @@ async def csrf_protection(request, call_next):
 
     response = await call_next(request)
     if not request.cookies.get(CSRF_COOKIE):
-        response.set_cookie(CSRF_COOKIE, issue_csrf_token(), httponly=False, secure=True, samesite="strict", max_age=3600, path="/")
+        response.set_cookie(CSRF_COOKIE, issue_csrf_token(), httponly=False, secure=COOKIE_SECURE, samesite="strict", max_age=3600, path="/")
     return response
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "https://localhost:8443",
-    ],
+    allow_origins=CORS_ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -73,6 +75,9 @@ app.include_router(
 @app.on_event("startup")
 def startup() -> None:
     init_db()
+    if os.getenv("SEED_DEMO_DATA", "false").lower() != "true":
+        return
+
     db = next(get_db())
     try:
         admin = seed_users(db)

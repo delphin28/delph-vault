@@ -4,7 +4,12 @@ export async function logout() {
   await apiClient.post('/auth/logout');
 }
 
+async function ensureCsrfToken() {
+  await apiClient.get('/auth/csrf');
+}
+
 export async function login(email, password, otp, backupCode) {
+  await ensureCsrfToken();
   const response = await apiClient.post(
     '/auth/login',
     new URLSearchParams({ username: email, password, ...(otp ? { otp } : {}), ...(backupCode ? { backup_code: backupCode } : {}) }),
@@ -47,6 +52,7 @@ export async function getCurrentUser() {
 }
 
 export async function register(username, email, password) {
+  await ensureCsrfToken();
   const response = await apiClient.post('/users', {
     username,
     email,

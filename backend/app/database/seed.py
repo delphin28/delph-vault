@@ -44,20 +44,7 @@ def seed_users(db: Session) -> Users:
     db.add(admin)
     db.commit()
     db.refresh(admin)
-    
-    # Print the TOTP secret and backup codes for testing
-    print("\n" + "="*60)
-    print("ADMIN USER SETUP")
-    print("="*60)
-    print(f"Email: admin@adsecure.com")
-    print(f"Password: AstrongPassword123!")
-    print(f"MFA Secret (for authenticator app): {secret}")
-    print(f"TOTP URI: {pyotp.TOTP(secret).provisioning_uri(name='admin@adsecure.com', issuer_name='Delph Vault')}")
-    print(f"\nBackup Codes:")
-    for code in formatted_backup_codes:
-        print(f"  {code}")
-    print("="*60 + "\n")
-    
+
     return admin
 
 

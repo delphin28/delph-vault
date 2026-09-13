@@ -10,6 +10,11 @@ export async function createPassword(entry) {
 	return response.data;
 }
 
+export async function updatePassword(passwordId, entry) {
+	const response = await apiClient.put(`/passwords/${passwordId}`, entry);
+	return response.data;
+}
+
 export async function deletePassword(passwordId) {
 	await apiClient.delete(`/passwords/${passwordId}`);
 }

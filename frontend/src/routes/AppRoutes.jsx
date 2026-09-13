@@ -5,6 +5,7 @@ import AppLayout from "../components/layout/AppLayout";
 import LoginPage from "../features/login/Login";
 import DashboardPage from "../features/dashboard/pages/DashboardPage";
 import SettingsPage from "../features/settings/pages/SettingsPage";
+import CategoriesPage from "../features/categories/pages/CategoriesPage";
 import PasswordListPage from "../features/vault/pages/PasswordListPage";
 import ForgotPasswordPage from "../features/forgot-password/ForgotPasswordPage";
 import { getCurrentUser } from "../api/authApi";
@@ -48,6 +49,7 @@ function AppRoutes() {
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/passwords" element={<PasswordListPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/categories" element={<CategoriesPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

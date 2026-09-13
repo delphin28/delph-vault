@@ -19,6 +19,7 @@ ACCESS_TOKEN_COOKIE = "access_token"
 CSRF_COOKIE = "csrf_token"
 CSRF_HEADER = "X-CSRF-Token"
 RECENT_VERIFICATION_COOKIE = "recent_verification"
+COOKIE_SECURE = os.getenv("COOKIE_SECURE", "true").lower() == "true"
 
 
 def issue_csrf_token() -> str:
@@ -43,7 +44,7 @@ def mark_recent_verification(response) -> None:
         RECENT_VERIFICATION_COOKIE,
         f"{timestamp}.{signature}",
         httponly=True,
-        secure=True,
+        secure=COOKIE_SECURE,
         samesite="strict",
         max_age=600,
         path="/",
@@ -82,6 +83,7 @@ def get_current_user(
     try:
         payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
         user_id = int(payload["sub"])
+        session_version = int(payload.get("sv", 0))
         if user_id <= 0:
             raise credentials_exception
     except (KeyError, jwt.InvalidTokenError, TypeError, ValueError):
@@ -89,6 +91,8 @@ def get_current_user(
 
     user = get_user_by_id(db, int(user_id))
     if not user:
+        raise credentials_exception
+    if user.session_version != session_version:
         raise credentials_exception
 
     return user

@@ -1,5 +1,5 @@
 # Model: user.py
-from sqlalchemy import Boolean, String
+from sqlalchemy import Boolean, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database.base import Base
 
@@ -12,6 +12,7 @@ class Users(Base):
     totp_secret: Mapped[str | None] = mapped_column(String(512), nullable=True)
     totp_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     backup_codes: Mapped[str | None] = mapped_column(String(4096), nullable=True)
+    session_version: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     
     passwords = relationship(
         "Passwords",

@@ -9,13 +9,14 @@ load_dotenv(Path(__file__).resolve().parents[3] / ".env")
 load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 
 DATABASE_URL = os.getenv("DATABASE_URL")
+SQLALCHEMY_ECHO = os.getenv("SQLALCHEMY_ECHO", "false").lower() == "true"
 
 if not DATABASE_URL:
     raise RuntimeError("DATABASE_URL is not configured")
 
 engine = create_engine(
     DATABASE_URL,
-    echo=True,
+    echo=SQLALCHEMY_ECHO,
 )
 
 SessionLocal = sessionmaker(

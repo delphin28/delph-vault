@@ -153,7 +153,7 @@ function SettingsPage() {
                 <SecurityOutlined color="primary" />
                 <Box><Typography className="settings-value">Encrypted vault storage</Typography><Typography variant="body2" color="text.secondary">Protected API requests use your access token.</Typography></Box>
               </Stack>
-              <Stack direction={{ xs: 'column', sm: 'row' }} gap={1}>
+              <Stack className="settings-security__mfa-actions" direction={{ xs: 'column', sm: 'row' }}>
                 {user?.mfa_enabled ? (
                   <>
                     <Button variant="outlined" onClick={handleRegenerateBackupCodes}>New backup codes</Button>
@@ -163,7 +163,7 @@ function SettingsPage() {
                   <Button variant="outlined" startIcon={<QrCode2Outlined />} onClick={handleSetupMfa}>Set up MFA</Button>
                 )}
               </Stack>
-              <Stack className="settings-security__actions" direction={{ xs: 'column', sm: 'row' }} gap={1}>
+              <Stack className="settings-security__actions" direction={{ xs: 'column', sm: 'row' }}>
                 <Button variant="outlined" startIcon={<DownloadOutlined />} onClick={handleExport} disabled={isExporting}>
                   {isExporting ? 'Exporting...' : 'Export encrypted JSON'}
                 </Button>
@@ -180,7 +180,7 @@ function SettingsPage() {
           <DialogTitle>Set up Microsoft Authenticator</DialogTitle>
           <DialogContent sx={{ display: 'grid', gap: 2, justifyItems: 'center', pt: 2 }}>
             <Typography variant="body2" color="text.secondary">{mfaSetup ? 'Scan this QR code, then enter the six-digit code from your app.' : 'Confirm your master password to generate an enrollment code.'}</Typography>
-            <TextField autoFocus fullWidth required label="Master password" type="password" value={mfaPassword} onChange={(event) => setMfaPassword(event.target.value)} />
+            {!mfaSetup && <TextField autoFocus fullWidth required label="Master password" type="password" value={mfaPassword} onChange={(event) => setMfaPassword(event.target.value)} />}
             {mfaSetup && <QRCodeSVG value={mfaSetup.otpauth_uri} size={190} includeMargin />}
             <Typography variant="caption" sx={{ wordBreak: 'break-all', textAlign: 'center' }}>Manual setup key: {mfaSetup?.secret}</Typography>
             {mfaSetup && <TextField fullWidth required label="Authenticator code" value={mfaCode} onChange={(event) => setMfaCode(event.target.value)} inputMode="numeric" inputProps={{ maxLength: 6, pattern: '[0-9]{6}' }} />}

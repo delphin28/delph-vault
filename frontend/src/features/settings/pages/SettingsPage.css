@@ -94,6 +94,11 @@
 
 .settings-security__actions {
   padding-top: 4px;
+  gap: 12px;
+}
+
+.settings-security__mfa-actions {
+  gap: 12px;
 }
 
 @media (max-width: 680px) {

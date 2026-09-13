@@ -24,13 +24,14 @@ import {
 import {
   AddOutlined,
   DeleteOutlineOutlined,
+  EditOutlined,
   LanguageOutlined,
   RefreshOutlined,
   VisibilityOffOutlined,
   VisibilityOutlined,
 } from '@mui/icons-material';
 import { getCategories } from '../../../api/categoryApi';
-import { createPassword, deletePassword, getPasswords, revealPassword } from '../../../api/vaultApi';
+import { createPassword, deletePassword, getPasswords, revealPassword, updatePassword } from '../../../api/vaultApi';
 
 const emptyForm = { name: '', url: '', password: '', category_id: '' };
 const passwordCharacters = {
@@ -101,6 +102,7 @@ function PasswordListPage() {
   const [revealedPasswords, setRevealedPasswords] = useState({});
   const [revealingId, setRevealingId] = useState(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [generatorLength, setGeneratorLength] = useState(20);
   const [generatorOptions, setGeneratorOptions] = useState({
@@ -174,6 +176,32 @@ function PasswordListPage() {
     });
   }
 
+  function openCreateDialog() {
+    setEditingId(null);
+    setForm({ ...emptyForm, category_id: categories[0]?.id || '' });
+    setError('');
+    setIsDialogOpen(true);
+  }
+
+  function openEditDialog(entry) {
+    setEditingId(entry.id);
+    setForm({
+      name: entry.name,
+      url: entry.url || '',
+      password: '',
+      category_id: entry.category_id,
+    });
+    setError('');
+    setIsDialogOpen(true);
+  }
+
+  function closeDialog() {
+    if (isSaving) return;
+    setIsDialogOpen(false);
+    setEditingId(null);
+    setForm(emptyForm);
+  }
+
   async function handleReveal(id) {
     if (revealedId === id) {
       setRevealedId(null);
@@ -198,21 +226,32 @@ function PasswordListPage() {
     }
   }
 
-  async function handleCreate(event) {
+  async function handleSave(event) {
     event.preventDefault();
     setIsSaving(true);
     setError('');
 
     try {
-      const created = await createPassword({
-        ...form,
+      const entry = {
+        name: form.name,
+        url: form.url || null,
         category_id: Number(form.category_id),
-      });
-      setPasswords((current) => [...current, created]);
+      };
+      if (form.password) entry.password = form.password;
+
+      if (editingId === null) {
+        const created = await createPassword({ ...entry, password: form.password });
+        setPasswords((current) => [...current, created]);
+      } else {
+        const updated = await updatePassword(editingId, entry);
+        setPasswords((current) => current.map((item) => item.id === editingId ? updated : item));
+      }
+
       setForm(emptyForm);
+      setEditingId(null);
       setIsDialogOpen(false);
     } catch {
-      setError('Unable to save this vault entry.');
+      setError(editingId === null ? 'Unable to save this vault entry.' : 'Unable to update this vault entry.');
     } finally {
       setIsSaving(false);
     }
@@ -237,7 +276,7 @@ function PasswordListPage() {
           <Typography className="vault-page__title" component="h1">Your vault</Typography>
           <Typography className="vault-page__description">Keep your accounts organized and close at hand.</Typography>
         </Box>
-        <Button variant="contained" startIcon={<AddOutlined />} onClick={() => setIsDialogOpen(true)} disabled={!categories.length}>
+        <Button variant="contained" startIcon={<AddOutlined />} onClick={openCreateDialog} disabled={!categories.length}>
           Add password
         </Button>
       </Stack>
@@ -280,6 +319,7 @@ function PasswordListPage() {
                   <Tooltip title={isRevealed ? 'Hide password' : 'Reveal for 10 seconds'}>
                     <IconButton onClick={() => handleReveal(entry.id)} disabled={revealingId === entry.id} aria-label={isRevealed ? 'Hide password' : 'Reveal password'}>{isRevealed ? <VisibilityOffOutlined /> : <VisibilityOutlined />}</IconButton>
                   </Tooltip>
+                  <Tooltip title="Edit entry"><IconButton onClick={() => openEditDialog(entry)} aria-label={`Edit ${entry.name}`}><EditOutlined /></IconButton></Tooltip>
                   <Tooltip title="Delete entry"><IconButton color="error" onClick={() => handleDelete(entry.id)} aria-label={`Delete ${entry.name}`}><DeleteOutlineOutlined /></IconButton></Tooltip>
                 </CardContent>
               </Card>
@@ -288,9 +328,9 @@ function PasswordListPage() {
         </Stack>
       )}
 
-      <Dialog open={isDialogOpen} onClose={() => !isSaving && setIsDialogOpen(false)} fullWidth maxWidth="sm">
-        <Box component="form" onSubmit={handleCreate}>
-          <DialogTitle>Add vault entry</DialogTitle>
+      <Dialog open={isDialogOpen} onClose={closeDialog} fullWidth maxWidth="sm">
+        <Box component="form" onSubmit={handleSave}>
+          <DialogTitle>{editingId === null ? 'Add vault entry' : 'Edit vault entry'}</DialogTitle>
           <DialogContent sx={{ display: 'grid', gap: 2, pt: 2 }}>
             <TextField required name="name" label="Service name" value={form.name} onChange={updateForm} inputProps={{ maxLength: 15 }} />
             <TextField name="url" label="URL" value={form.url} onChange={updateForm} inputProps={{ maxLength: 100 }} />
@@ -301,10 +341,10 @@ function PasswordListPage() {
                   Generate
                 </Button>
               </Stack>
-              <TextField required fullWidth name="password" label="Enter manually or generate" type="password" value={form.password} onChange={updateForm} />
+              <TextField required={editingId === null} fullWidth name="password" label={editingId === null ? 'Enter manually or generate' : 'New password (optional)'} type="password" value={form.password} onChange={updateForm} helperText={editingId === null ? undefined : 'Leave blank to keep the current password.'} />
               <Stack className="vault-generator__controls" direction={{ xs: 'column', sm: 'row' }} gap={2}>
                 <TextField label="Length" type="number" value={generatorLength} onChange={(event) => setGeneratorLength(Math.min(64, Math.max(8, Number(event.target.value) || 8)))} inputProps={{ min: 8, max: 64 }} size="small" />
-                <Stack direction="row" gap={1} flexWrap="wrap" alignItems="center">
+                <Stack className="vault-generator__options" direction="row" flexWrap="wrap" alignItems="center">
                   {Object.keys(generatorOptions).map((option) => (
                     <Button key={option} type="button" size="small" variant={generatorOptions[option] ? 'contained' : 'outlined'} onClick={() => toggleGeneratorOption(option)}>
                       {option === 'lowercase' ? 'a-z' : option === 'uppercase' ? 'A-Z' : option === 'numbers' ? '0-9' : 'Symbols'}
@@ -320,7 +360,7 @@ function PasswordListPage() {
               </Select>
             </FormControl>
           </DialogContent>
-          <DialogActions><Button onClick={() => setIsDialogOpen(false)} disabled={isSaving}>Cancel</Button><Button type="submit" variant="contained" disabled={isSaving}>{isSaving ? 'Saving...' : 'Save entry'}</Button></DialogActions>
+          <DialogActions><Button onClick={closeDialog} disabled={isSaving}>Cancel</Button><Button type="submit" variant="contained" disabled={isSaving}>{isSaving ? 'Saving...' : editingId === null ? 'Save entry' : 'Update entry'}</Button></DialogActions>
         </Box>
       </Dialog>
     </Box>

@@ -16,6 +16,8 @@ def init_db() -> None:
                 connection.execute(text('ALTER TABLE users ADD COLUMN totp_enabled BOOLEAN NOT NULL DEFAULT FALSE'))
             if "backup_codes" not in columns:
                 connection.execute(text('ALTER TABLE users ADD COLUMN backup_codes VARCHAR(4096)'))
+            if "session_version" not in columns:
+                connection.execute(text('ALTER TABLE users ADD COLUMN session_version INTEGER NOT NULL DEFAULT 0'))
 
     if engine.dialect.name == "postgresql":
         password_column = next(

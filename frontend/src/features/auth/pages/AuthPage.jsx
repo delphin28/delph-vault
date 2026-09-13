@@ -1,7 +1,7 @@
 import './AuthPage.css';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { login, resetPassword as resetPasswordAPI, checkMfa } from '../../../api/authApi';
+import { login, register, resetPassword as resetPasswordAPI, checkMfa } from '../../../api/authApi';
 
 function AuthPage({ initialMode = 'LOGIN' }) {
   const [mode, setMode] = useState(initialMode.toUpperCase());
@@ -9,6 +9,7 @@ function AuthPage({ initialMode = 'LOGIN' }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mfaRequired, setMfaRequired] = useState(false);
   const [mfaMethod, setMfaMethod] = useState('otp'); // 'otp' or 'backup_code'
+  const [loginCredentials, setLoginCredentials] = useState(null);
   const [resetEmail, setResetEmail] = useState(''); // Store email for password reset flow
   const [newPassword, setNewPassword] = useState(''); // Store new password for password reset flow
   const navigate = useNavigate();
@@ -21,12 +22,47 @@ function AuthPage({ initialMode = 'LOGIN' }) {
     setError('');
 
     if (isRegistering) {
-      // Handle registration - to be implemented
+      const formData = new FormData(event.currentTarget);
+      const password = formData.get('password');
+      if (password !== formData.get('confirm-password')) {
+        setError('Passwords do not match.');
+        return;
+      }
+
+      setIsSubmitting(true);
+      try {
+        await register(formData.get('username'), formData.get('email'), password);
+        setMode('LOGIN');
+        setError('Account created. Sign in to unlock your vault.');
+      } catch (err) {
+        setError(err.response?.data?.detail || 'Unable to create your account.');
+      } finally {
+        setIsSubmitting(false);
+      }
       return;
     }
 
     if (isForgotPasswordMode) {
       return handlePasswordReset(event);
+    }
+
+    if (mfaRequired) {
+      const formData = new FormData(event.currentTarget);
+      setIsSubmitting(true);
+      try {
+        await login(
+          loginCredentials.email,
+          loginCredentials.password,
+          mfaMethod === 'otp' ? formData.get('otp') : null,
+          mfaMethod === 'backup_code' ? formData.get('backup-code') : null,
+        );
+        navigate('/dashboard');
+      } catch (err) {
+        setError(err.response?.data?.detail || 'Unable to verify your MFA code.');
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
     }
 
     // Handle login
@@ -38,7 +74,13 @@ function AuthPage({ initialMode = 'LOGIN' }) {
       // Token is set as HTTP-only cookie by backend
       navigate('/dashboard');
     } catch (err) {
-      setError(err.response?.data?.detail || 'Unable to sign in with those credentials.');
+      if (err.response?.data?.detail === 'MFA_REQUIRED') {
+        setLoginCredentials({ email: formData.get('email'), password: formData.get('password') });
+        setMfaRequired(true);
+        setMfaMethod('otp');
+      } else {
+        setError(err.response?.data?.detail || 'Unable to sign in with those credentials.');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -73,6 +115,11 @@ function AuthPage({ initialMode = 'LOGIN' }) {
     // First time: check if MFA is enabled
     const email = formData.get('email');
     const password = formData.get('password');
+
+    if (password !== formData.get('confirm-password')) {
+      setError('Passwords do not match.');
+      return;
+    }
     
     setIsSubmitting(true);
     try {
@@ -148,7 +195,7 @@ function AuthPage({ initialMode = 'LOGIN' }) {
 
           {mfaRequired && (
             <>
-              <p className="mfa-notice">Multi-factor authentication is required to reset your password.</p>
+              <p className="mfa-notice">Multi-factor authentication is required to {isForgotPasswordMode ? 'reset your password' : 'sign in'}.</p>
               <div className="mfa-method-selector">
                 <label>
                   <input
@@ -235,7 +282,7 @@ function AuthPage({ initialMode = 'LOGIN' }) {
 
         {mfaRequired && (
           <p className="auth-switch">
-            <button type="button" className="auth-switch-button" onClick={() => { setMfaRequired(false); setError(''); }}>
+            <button type="button" className="auth-switch-button" onClick={() => { setMfaRequired(false); setLoginCredentials(null); setError(''); }}>
               Back
             </button>
           </p>

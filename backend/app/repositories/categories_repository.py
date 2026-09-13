@@ -29,3 +29,10 @@ def create_category(db: Session, *, name: str, user_id: int) -> Category:
 	db.commit()
 	db.refresh(category)
 	return category
+
+
+def update_category(db: Session, category: Category, *, name: str) -> Category:
+	category.name = name
+	db.commit()
+	db.refresh(category)
+	return category
